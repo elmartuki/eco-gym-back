@@ -22,7 +22,6 @@ const verificarFirmaMercadoPago = (req, res, next) => {
     const xSignature = req.headers["x-signature"];
     const xRequestId = req.headers["x-request-id"];
 
-    // Si no hay firma, es una IPN antigua. Dejamos pasar para que webhookServicio la maneje.
     if (!xSignature || !xRequestId) {
       console.log("⚠️ [WEBHOOK] Sin firma (IPN). Pasando al servicio...");
       return next();
@@ -38,12 +37,10 @@ const verificarFirmaMercadoPago = (req, res, next) => {
 
     const manifest = `id:${resourceId};request-id:${xRequestId};ts:${ts};`;
 
-    // Validar con Secreto de Pruebas
     const hmacTest = crypto.createHmac("sha256", process.env.MP_WEBHOOK_SECRET);
     hmacTest.update(manifest);
     const shaTest = hmacTest.digest("hex");
 
-    // Validar con Secreto de Producción
     const hmacProd = crypto.createHmac(
       "sha256",
       process.env.MP_WEBHOOK_SECRET_PROD,
@@ -59,7 +56,7 @@ const verificarFirmaMercadoPago = (req, res, next) => {
     }
 
     console.error("❌ [WEBHOOK] FIRMA INVÁLIDA. No se procesará el pago.");
-    return res.sendStatus(200); // Respondemos 200 pero cortamos el flujo
+    return res.sendStatus(200);
   } catch (error) {
     console.error("💥 Error en middleware:", error.message);
     return res.sendStatus(200);

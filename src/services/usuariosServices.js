@@ -73,7 +73,7 @@ export const enviarCodigoRegistroService = async (email, nombreUsuario) => {
       };
     }
 
-    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const codigo = Math.floor(10000 + Math.random() * 90000).toString();
     const expiracion = new Date(Date.now() + 15 * 60 * 1000);
 
     codigosRegistro.set(email, { codigo, expiracion });
