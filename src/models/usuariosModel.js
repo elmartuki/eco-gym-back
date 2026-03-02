@@ -33,35 +33,10 @@ const usuarioSchema = new mongoose.Schema(
     },
     rol: {
       type: String,
-      enum: ["usuario", "admin", "cadete"],
+      enum: ["usuario", "admin"],
       default: "usuario",
     },
-    direcciones: [
-      {
-        direccion: { type: String, required: true, trim: true },
-        referencia: { type: String, default: "", trim: true },
-        lat: { type: Number, required: true },
-        lng: { type: Number, required: true },
-      },
-    ],
-    experiencia: {
-      type: String,
-      default: "",
-    },
-    vehiculo: {
-      type: String,
-      enum: ["Bicicleta", "Moto", "Auto", ""],
-      default: "",
-    },
-    estado: {
-      type: String,
-      enum: ["pendiente", "activo", "rechazado", "baneado"],
-      default: "activo",
-    },
-    activo: {
-      type: Boolean,
-      default: true,
-    },
+
     baneado: {
       type: Boolean,
       default: false,
