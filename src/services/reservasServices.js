@@ -19,3 +19,21 @@ export const crearReservaService = async (idUsuario, body) => {
   });
   return await nuevaReserva.save();
 };
+
+export const obtenerReservasPorSocioService = async (idUsuario) => {
+  return await reservaModel
+    .find({ usuario: idUsuario })
+    .sort({ fechaCompleta: 1 });
+};
+
+export const confirmarReservaService = async (idReserva) => {
+  const reserva = await reservaModel.findById(idReserva);
+  if (!reserva) throw new Error("Reserva no encontrada");
+
+  if (reserva.estado !== "pendiente") {
+    throw new Error("Esta reserva no esta pendiente de pago");
+  }
+
+  reserva.estado = "activa";
+  return await reserva.save();
+};

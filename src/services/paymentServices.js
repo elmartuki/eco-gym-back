@@ -71,22 +71,50 @@ export const createPreferenceServicio = async (
         mercadoPago: mpResult ? { preference_id: mpResult.id } : {},
       });
     } else {
-      const dataSuscripcion = {
-        usuario: idUsuario,
-        plan: plan._id,
-        nombrePlan: plan.nombre,
-        duracionDias: plan.duracionDias || 30,
-        metodoPago,
-        estado: "pendiente",
-        total,
-        mercadoPago: mpResult ? { preference_id: mpResult.id } : {},
-      };
+      const subActual = await suscripcionModel
+        .findOne({ usuario: idUsuario })
+        .lean();
+      const isActiva =
+        subActual &&
+        subActual.estado === "activa" &&
+        new Date(subActual.fechaVencimiento) > new Date();
 
-      await suscripcionModel.findOneAndUpdate(
-        { usuario: idUsuario },
-        dataSuscripcion,
-        { upsert: true, new: true },
-      );
+      if (isActiva) {
+        await suscripcionModel.findOneAndUpdate(
+          { usuario: idUsuario },
+          {
+            $set: {
+              planFuturo: {
+                plan: plan._id,
+                nombrePlan: plan.nombre,
+                duracionDias: plan.duracionDias || 30,
+                metodoPago,
+                estado: "pendiente",
+                total,
+                mercadoPago: mpResult ? { preference_id: mpResult.id } : {},
+              },
+            },
+          },
+          { upsert: true, new: true, strict: false },
+        );
+      } else {
+        const dataSuscripcion = {
+          plan: plan._id,
+          nombrePlan: plan.nombre,
+          duracionDias: plan.duracionDias || 30,
+          metodoPago,
+          estado: "pendiente",
+          total,
+          mercadoPago: mpResult ? { preference_id: mpResult.id } : {},
+          $unset: { planFuturo: 1 },
+        };
+
+        await suscripcionModel.findOneAndUpdate(
+          { usuario: idUsuario },
+          dataSuscripcion,
+          { upsert: true, new: true, strict: false },
+        );
+      }
     }
 
     return { statusCode: 200, json: { init_point: mpResult?.init_point } };
@@ -106,24 +134,40 @@ export const webhookServicio = async (body) => {
 
       if (res.status === "approved") {
         const suscripcion = await suscripcionModel
-          .findOne({ usuario: res.external_reference, estado: "pendiente" })
-          .sort({ createdAt: -1 });
+          .findOne({ usuario: res.external_reference })
+          .lean();
 
         if (suscripcion) {
-          const dias = suscripcion.duracionDias || 30;
-          const fechaVencimiento = new Date();
-          fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
+          if (suscripcion.estado === "pendiente") {
+            const dias = suscripcion.duracionDias || 30;
+            const fechaVencimiento = new Date();
+            fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
 
-          await suscripcionModel.findByIdAndUpdate(
-            suscripcion._id,
-            {
-              estado: "activa",
-              fechaInicio: new Date(),
-              fechaVencimiento,
-              "mercadoPago.id_pago": res.id.toString(),
-            },
-            { new: true },
-          );
+            await suscripcionModel.findByIdAndUpdate(
+              suscripcion._id,
+              {
+                estado: "activa",
+                fechaInicio: new Date(),
+                fechaVencimiento,
+                "mercadoPago.id_pago": res.id.toString(),
+              },
+              { new: true },
+            );
+          } else if (
+            suscripcion.planFuturo &&
+            suscripcion.planFuturo.estado === "pendiente"
+          ) {
+            await suscripcionModel.findByIdAndUpdate(
+              suscripcion._id,
+              {
+                $set: {
+                  "planFuturo.estado": "pagado",
+                  "planFuturo.mercadoPago.id_pago": res.id.toString(),
+                },
+              },
+              { new: true, strict: false },
+            );
+          }
         }
 
         const reserva = await reservaModel
