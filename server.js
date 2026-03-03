@@ -46,8 +46,4 @@ app.use((req, res, next) => {
 app.use("/api", limiter);
 app.use("/api", routes);
 
-app.listen(3000, () => {
-  console.log("hola");
-});
-
 export default app;
