@@ -14,7 +14,7 @@ import {
 
 export const enviarCodigoRegistroController = async (req, res) => {
   await connectDB();
-  const { email, nombreUsuario } = req.body;
+  const { email, nombreUsuario, userId } = req.body;
   const { json, statusCode } = await enviarCodigoRegistroService(
     email,
     nombreUsuario,

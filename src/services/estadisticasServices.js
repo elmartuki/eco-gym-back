@@ -1,4 +1,3 @@
-import { pedidoModel } from "../models/pedidoModel.js";
 import { usuarioModel } from "../models/usuariosModel.js";
 
 export const obtenerEstadisticasService = async (mes, anio) => {

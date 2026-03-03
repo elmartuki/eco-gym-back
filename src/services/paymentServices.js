@@ -4,7 +4,6 @@ import {
   Payment,
   MerchantOrder,
 } from "mercadopago";
-import { pedidoModel } from "../models/pedidoModel.js";
 import { carritoModel } from "../models/carritoModel.js";
 import { usuarioModel } from "../models/usuariosModel.js";
 import { productoModel } from "../models/productoModel.js";

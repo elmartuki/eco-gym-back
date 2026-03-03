@@ -62,18 +62,24 @@ const generarTemplateCorreo = (titulo, nombre, mensaje, codigo, nota) => {
   `;
 };
 
-export const enviarCodigoRegistroService = async (email, nombreUsuario) => {
+export const enviarCodigoRegistroService = async (
+  email,
+  nombreUsuario,
+  userId = null,
+) => {
   try {
     const existe = await usuarioModel.findOne({ email });
 
     if (existe) {
-      return {
-        statusCode: 400,
-        json: { message: "El correo electrónico ya está registrado" },
-      };
+      if (!(userId && existe._id.toString() === userId.toString())) {
+        return {
+          statusCode: 400,
+          json: { message: "El correo electrónico ya está registrado" },
+        };
+      }
     }
 
-    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const codigo = Math.floor(10000 + Math.random() * 90000).toString();
     const expiracion = new Date(Date.now() + 15 * 60 * 1000);
 
     codigosRegistro.set(email, { codigo, expiracion });
@@ -521,19 +527,14 @@ export const googleAuthService = async (datos) => {
 
 export const actualizarPerfilService = async (id, datos) => {
   try {
-    const { nombreCompleto, telefono } = datos;
-
     const usuarioActualizado = await usuarioModel.findByIdAndUpdate(
       id,
-      { $set: { nombreCompleto, telefono } },
-      { new: true },
+      { $set: datos },
+      { new: true, runValidators: true }
     );
 
     if (!usuarioActualizado) {
-      return {
-        statusCode: 404,
-        json: { message: "Usuario no encontrado." },
-      };
+      return { statusCode: 404, json: { message: "Usuario no encontrado." } };
     }
 
     const token = jwt.sign(
@@ -547,22 +548,15 @@ export const actualizarPerfilService = async (id, datos) => {
         direcciones: usuarioActualizado.direcciones,
       },
       process.env.JWT_SECRET || "43003673",
-      { expiresIn: "7d" },
+      { expiresIn: "7d" }
     );
 
     return {
       statusCode: 200,
-      json: {
-        message: "Perfil actualizado correctamente",
-        token,
-        usuario: usuarioActualizado,
-      },
+      json: { message: "Perfil actualizado correctamente", token, usuario: usuarioActualizado },
     };
   } catch (error) {
-    return {
-      statusCode: 500,
-      json: { message: "Error al actualizar perfil", error: error.message },
-    };
+    return { statusCode: 500, json: { message: "Error al actualizar perfil", error: error.message } };
   }
 };
 
