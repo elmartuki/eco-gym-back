@@ -3,6 +3,7 @@ import { usuarioModel } from "../models/usuariosModel.js";
 import { suscripcionModel } from "../models/suscripcionModel.js";
 import { planesModel } from "../models/planesModel.js";
 import { reservaModel } from "../models/reservasModel.js";
+import { pagoModel } from "../models/pagosModel.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -70,6 +71,15 @@ export const createPreferenceServicio = async (
         metodoPago,
         mercadoPago: mpResult ? { preference_id: mpResult.id } : {},
       });
+
+      await pagoModel.create({
+        usuario: idUsuario,
+        descripcion: `Reserva Clase (Pendiente)`,
+        monto: total,
+        metodoPago,
+        estado: "pendiente",
+        idMercadoPago: mpResult ? mpResult.id : undefined,
+      });
     } else {
       const subActual = await suscripcionModel
         .findOne({ usuario: idUsuario })
@@ -97,6 +107,15 @@ export const createPreferenceServicio = async (
           },
           { upsert: true, new: true, strict: false },
         );
+
+        await pagoModel.create({
+          usuario: idUsuario,
+          descripcion: `Plan Futuro: ${plan.nombre} (Pendiente)`,
+          monto: total,
+          metodoPago,
+          estado: "pendiente",
+          idMercadoPago: mpResult ? mpResult.id : undefined,
+        });
       } else {
         const dataSuscripcion = {
           plan: plan._id,
@@ -114,6 +133,15 @@ export const createPreferenceServicio = async (
           dataSuscripcion,
           { upsert: true, new: true, strict: false },
         );
+
+        await pagoModel.create({
+          usuario: idUsuario,
+          descripcion: `Suscripción: ${plan.nombre} (Pendiente)`,
+          monto: total,
+          metodoPago,
+          estado: "pendiente",
+          idMercadoPago: mpResult ? mpResult.id : undefined,
+        });
       }
     }
 
@@ -153,6 +181,20 @@ export const webhookServicio = async (body) => {
               },
               { new: true },
             );
+
+            await pagoModel.findOneAndUpdate(
+              {
+                usuario: res.external_reference,
+                estado: "pendiente",
+                metodoPago: "mercado-pago",
+              },
+              {
+                estado: "aprobado",
+                descripcion: `Suscripción MP: ${suscripcion.nombrePlan}`,
+                idMercadoPago: res.id.toString(),
+              },
+              { sort: { createdAt: -1 } },
+            );
           } else if (
             suscripcion.planFuturo &&
             suscripcion.planFuturo.estado === "pendiente"
@@ -166,6 +208,20 @@ export const webhookServicio = async (body) => {
                 },
               },
               { new: true, strict: false },
+            );
+
+            await pagoModel.findOneAndUpdate(
+              {
+                usuario: res.external_reference,
+                estado: "pendiente",
+                metodoPago: "mercado-pago",
+              },
+              {
+                estado: "aprobado",
+                descripcion: `Plan Futuro MP: ${suscripcion.planFuturo.nombrePlan}`,
+                idMercadoPago: res.id.toString(),
+              },
+              { sort: { createdAt: -1 } },
             );
           }
         }
@@ -182,6 +238,21 @@ export const webhookServicio = async (body) => {
               "mercadoPago.id_pago": res.id.toString(),
             },
             { new: true },
+          );
+
+          await pagoModel.findOneAndUpdate(
+            {
+              usuario: res.external_reference,
+              estado: "pendiente",
+              metodoPago: "mercado-pago",
+            },
+            {
+              estado: "aprobado",
+              descripcion: `Reserva Clase MP`,
+              monto: res.transaction_amount,
+              idMercadoPago: res.id.toString(),
+            },
+            { sort: { createdAt: -1 } },
           );
         }
       }

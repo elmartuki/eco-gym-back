@@ -1,6 +1,7 @@
 import { planesModel } from "../models/planesModel.js";
 import { suscripcionModel } from "../models/suscripcionModel.js";
 import { usuarioModel } from "../models/usuariosModel.js";
+import { pagoModel } from "../models/pagosModel.js";
 import mongoose from "mongoose";
 
 export const sincronizarSuscripciones = async () => {
@@ -100,39 +101,175 @@ export const confirmarSuscripcionService = async (idUsuario) => {
   try {
     const suscripcion = await suscripcionModel
       .findOne({ usuario: idUsuario })
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
-    if (!suscripcion) throw new Error("No hay suscripciones para este usuario");
+    if (!suscripcion) {
+      return { statusCode: 404, json: { message: "No hay suscripciones" } };
+    }
 
     if (suscripcion.estado === "pendiente") {
       const dias = suscripcion.duracionDias || 30;
       const fechaVencimiento = new Date();
       fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
 
-      return await suscripcionModel.findByIdAndUpdate(
+      let queryPlan = [];
+      if (suscripcion.plan) queryPlan.push({ _id: suscripcion.plan });
+      if (suscripcion.nombrePlan)
+        queryPlan.push({ nombre: suscripcion.nombrePlan });
+
+      let montoFinal = suscripcion.total || 0;
+      if (queryPlan.length > 0) {
+        const planInfo = await planesModel.findOne({ $or: queryPlan }).lean();
+        if (planInfo) {
+          montoFinal =
+            planInfo.precioOferta > 0 ? planInfo.precioOferta : planInfo.precio;
+        }
+      }
+
+      const subActualizada = await suscripcionModel.findByIdAndUpdate(
         suscripcion._id,
         {
           estado: "activa",
           fechaInicio: new Date(),
           fechaVencimiento,
+          total: montoFinal,
         },
         { new: true },
       );
+
+      await pagoModel.findOneAndUpdate(
+        {
+          usuario: idUsuario,
+          estado: "pendiente",
+          descripcion: { $regex: suscripcion.nombrePlan, $options: "i" },
+        },
+        {
+          estado: "aprobado",
+          descripcion: `Suscripción: ${suscripcion.nombrePlan}`,
+          monto: montoFinal,
+          metodoPago: suscripcion.metodoPago || "transferencia",
+        },
+        { sort: { createdAt: -1 } },
+      );
+
+      return { statusCode: 200, json: subActualizada };
     } else if (
       suscripcion.planFuturo &&
       suscripcion.planFuturo.estado === "pendiente"
     ) {
-      return await suscripcionModel.findByIdAndUpdate(
+      let queryPlanFuturo = [];
+      if (suscripcion.planFuturo.plan)
+        queryPlanFuturo.push({ _id: suscripcion.planFuturo.plan });
+      if (suscripcion.planFuturo.nombrePlan)
+        queryPlanFuturo.push({ nombre: suscripcion.planFuturo.nombrePlan });
+
+      let montoFinalFuturo = suscripcion.planFuturo.total || 0;
+      if (queryPlanFuturo.length > 0) {
+        const planFuturoInfo = await planesModel
+          .findOne({ $or: queryPlanFuturo })
+          .lean();
+        if (planFuturoInfo) {
+          montoFinalFuturo =
+            planFuturoInfo.precioOferta > 0
+              ? planFuturoInfo.precioOferta
+              : planFuturoInfo.precio;
+        }
+      }
+
+      const subActualizada = await suscripcionModel.findByIdAndUpdate(
         suscripcion._id,
         {
-          $set: { "planFuturo.estado": "pagado" },
+          $set: {
+            "planFuturo.estado": "pagado",
+            "planFuturo.total": montoFinalFuturo,
+          },
         },
         { new: true, strict: false },
       );
-    } else {
-      throw new Error("El usuario no tiene pagos pendientes por confirmar");
+
+      await pagoModel.findOneAndUpdate(
+        {
+          usuario: idUsuario,
+          estado: "pendiente",
+          descripcion: {
+            $regex: suscripcion.planFuturo.nombrePlan,
+            $options: "i",
+          },
+        },
+        {
+          estado: "aprobado",
+          descripcion: `Plan Futuro: ${suscripcion.planFuturo.nombrePlan}`,
+          monto: montoFinalFuturo,
+          metodoPago: suscripcion.planFuturo.metodoPago || "transferencia",
+        },
+        { sort: { createdAt: -1 } },
+      );
+
+      return { statusCode: 200, json: subActualizada };
     }
+
+    return { statusCode: 400, json: { message: "No hay pagos pendientes" } };
+  } catch (error) {
+    return { statusCode: 500, json: { message: error.message } };
+  }
+};
+
+export const renovarSuscripcionAdminService = async (idUsuario, metodoPago) => {
+  try {
+    const suscripcion = await suscripcionModel
+      .findOne({ usuario: idUsuario })
+      .sort({ createdAt: -1 });
+    if (!suscripcion) throw new Error("No se encontró suscripción");
+
+    let queryPlan = [];
+    if (suscripcion.plan) queryPlan.push({ _id: suscripcion.plan });
+    if (suscripcion.nombrePlan)
+      queryPlan.push({ nombre: suscripcion.nombrePlan });
+
+    let montoFinal = suscripcion.total || 0;
+    if (queryPlan.length > 0) {
+      const planInfo = await planesModel.findOne({ $or: queryPlan }).lean();
+      if (planInfo) {
+        montoFinal =
+          planInfo.precioOferta > 0 ? planInfo.precioOferta : planInfo.precio;
+      }
+    }
+
+    const dias = suscripcion.duracionDias || 30;
+    let fechaInicio = new Date();
+    let fechaVencimiento = new Date();
+
+    if (
+      suscripcion.estado === "activa" &&
+      new Date(suscripcion.fechaVencimiento) > new Date()
+    ) {
+      fechaInicio = new Date(suscripcion.fechaVencimiento);
+      fechaVencimiento = new Date(suscripcion.fechaVencimiento);
+    }
+
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
+
+    const renovacion = await suscripcionModel.findOneAndUpdate(
+      { usuario: idUsuario },
+      {
+        estado: "activa",
+        metodoPago,
+        fechaVencimiento,
+        total: montoFinal,
+        $unset: { planFuturo: 1 },
+      },
+      { new: true, upsert: true, strict: false },
+    );
+
+    await pagoModel.create({
+      usuario: idUsuario,
+      descripcion: `Renovación Admin: ${suscripcion.nombrePlan}`,
+      monto: montoFinal,
+      metodoPago: metodoPago,
+      estado: "aprobado",
+    });
+
+    return renovacion;
   } catch (error) {
     throw new Error(error.message);
   }
@@ -178,42 +315,6 @@ export const cancelarSuscripcionService = async (idUsuario) => {
   }
 };
 
-export const renovarSuscripcionAdminService = async (idUsuario, metodoPago) => {
-  try {
-    const suscripcion = await suscripcionModel
-      .findOne({ usuario: idUsuario })
-      .sort({ createdAt: -1 });
-    if (!suscripcion) throw new Error("No se encontró suscripción");
-
-    const dias = suscripcion.duracionDias || 30;
-    let fechaInicio = new Date();
-    let fechaVencimiento = new Date();
-
-    if (
-      suscripcion.estado === "activa" &&
-      new Date(suscripcion.fechaVencimiento) > new Date()
-    ) {
-      fechaInicio = new Date(suscripcion.fechaVencimiento);
-      fechaVencimiento = new Date(suscripcion.fechaVencimiento);
-    }
-
-    fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
-
-    return await suscripcionModel.findOneAndUpdate(
-      { usuario: idUsuario },
-      {
-        estado: "activa",
-        metodoPago,
-        fechaVencimiento,
-        $unset: { planFuturo: 1 },
-      },
-      { new: true, upsert: true, strict: false },
-    );
-  } catch (error) {
-    throw new Error(error.message);
-  }
-};
-
 export const cambiarPlanAdminService = async (
   idUsuario,
   planId,
@@ -243,7 +344,7 @@ export const cambiarPlanAdminService = async (
       subActual.estado === "activa" &&
       new Date(subActual.fechaVencimiento) > new Date()
     ) {
-      return await suscripcionModel.findByIdAndUpdate(
+      const subActualizada = await suscripcionModel.findByIdAndUpdate(
         subActual._id,
         {
           $set: {
@@ -259,6 +360,16 @@ export const cambiarPlanAdminService = async (
         },
         { new: true, strict: false },
       );
+
+      await pagoModel.create({
+        usuario: idUsuario,
+        descripcion: `Cambio Plan Futuro Admin: ${planInfo.nombre}`,
+        monto: total,
+        metodoPago: metodoPago,
+        estado: "aprobado",
+      });
+
+      return subActualizada;
     } else {
       const fechaInicio = new Date();
       const fechaVencimiento = new Date();
@@ -276,11 +387,21 @@ export const cambiarPlanAdminService = async (
         $unset: { planFuturo: 1 },
       };
 
-      return await suscripcionModel.findOneAndUpdate(
+      const renovacion = await suscripcionModel.findOneAndUpdate(
         { usuario: idUsuario },
         updateData,
         { new: true, upsert: true, strict: false },
       );
+
+      await pagoModel.create({
+        usuario: idUsuario,
+        descripcion: `Cambio de Plan Admin: ${planInfo.nombre}`,
+        monto: total,
+        metodoPago: metodoPago,
+        estado: "aprobado",
+      });
+
+      return renovacion;
     }
   } catch (error) {
     throw new Error(error.message);

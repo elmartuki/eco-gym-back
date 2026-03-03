@@ -25,36 +25,52 @@ const generarTemplateCorreo = (titulo, nombre, mensaje, codigo, nota) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #0f172a; }
-        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #f1f5f9; }
-        .header { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); padding: 32px 20px; text-align: center; }
-        .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
-        .content { padding: 40px 32px; text-align: center; }
-        .greeting { font-size: 18px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px; text-align: left; }
-        .message { font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 32px; text-align: left; }
-        .code-container { background-color: #fff7ed; border: 2px dashed #fdba74; border-radius: 12px; padding: 24px; margin: 0 auto 32px; max-width: 300px; }
-        .code { font-size: 42px; font-weight: 800; color: #ea580c; letter-spacing: 8px; margin: 0; display: flex; justify-content: center; align-items: center; }
-        .footer { padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; }
-        .note { font-size: 13px; color: #64748b; margin: 0 0 12px; line-height: 1.5; }
-        .brand { font-size: 14px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+        body { margin: 0; padding: 0; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #000000; color: #ffffff; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #000000; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #121212; border-radius: 12px; border: 1px solid #222222; overflow: hidden; }
+        .header { background-color: #1a1a1a; padding: 40px 30px; text-align: center; border-bottom: 2px solid #c1ff00; }
+        .logo { font-size: 28px; font-weight: 900; color: #ffffff; letter-spacing: 2px; margin: 0; }
+        .logo span { color: #c1ff00; }
+        .title { margin: 20px 0 0 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+        .content { padding: 40px 30px; text-align: center; }
+        .greeting { font-size: 18px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 20px; text-align: left; text-transform: uppercase; }
+        .message { font-size: 15px; color: #cccccc; line-height: 1.6; margin-bottom: 35px; text-align: left; }
+        .code-container { background-color: #000000; border: 1px solid #333333; border-radius: 8px; padding: 30px; margin: 0 auto 35px; max-width: 300px; position: relative; }
+        .code-container::before { content: ''; position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 40px; height: 2px; background-color: #c1ff00; }
+        .code { font-size: 48px; font-weight: 900; color: #c1ff00; letter-spacing: 12px; margin: 0; display: flex; justify-content: center; align-items: center; text-shadow: 0 0 20px rgba(193, 255, 0, 0.2); }
+        .footer { padding: 30px; background-color: #0a0a0a; border-top: 1px solid #222222; text-align: center; }
+        .note-box { background-color: rgba(255, 59, 59, 0.1); border-left: 3px solid #ff3b3b; padding: 15px; margin-bottom: 20px; text-align: left; }
+        .note-text { color: #ff3b3b; font-size: 13px; font-weight: 600; margin: 0; }
+        .footer-text { font-size: 12px; color: #666666; margin: 0 0 15px; line-height: 1.5; }
+        .brand { font-size: 12px; font-weight: 800; color: #444444; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
       </style>
     </head>
     <body>
-      <div class="container">
-        <div class="header">
-          <h1>${titulo}</h1>
-        </div>
-        <div class="content">
-          ${nombre ? `<p class="greeting">Hola ${nombre},</p>` : ""}
-          <p class="message">${mensaje}</p>
-          <div class="code-container">
-            <h2 class="code">${codigo}</h2>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h2 class="logo">ECO<span>GYM</span></h2>
+            <h1 class="title">${titulo}</h1>
           </div>
-          ${nota ? `<p class="note" style="color: #ef4444; font-weight: 500;">${nota}</p>` : ""}
-        </div>
-        <div class="footer">
-          <p class="note">Este código expirará en 15 minutos. Si no solicitaste este código, puedes ignorar este correo de forma segura.</p>
-          <p class="brand">QUÉ RICO POLLO</p>
+          <div class="content">
+            ${nombre ? `<p class="greeting">HOLA ${nombre},</p>` : ""}
+            <p class="message">${mensaje}</p>
+            <div class="code-container">
+              <h2 class="code">${codigo}</h2>
+            </div>
+            ${
+              nota
+                ? `
+            <div class="note-box">
+              <p class="note-text">${nota}</p>
+            </div>`
+                : ""
+            }
+          </div>
+          <div class="footer">
+            <p class="footer-text">Este código expirará en 15 minutos.<br>Si no solicitaste este código, ignora este mensaje.</p>
+            <p class="brand">ECOGYM FITNESS CENTER</p>
+          </div>
         </div>
       </div>
     </body>
@@ -62,15 +78,21 @@ const generarTemplateCorreo = (titulo, nombre, mensaje, codigo, nota) => {
   `;
 };
 
-export const enviarCodigoRegistroService = async (email, nombreUsuario) => {
+export const enviarCodigoRegistroService = async (
+  email,
+  nombreUsuario,
+  userId = null,
+) => {
   try {
     const existe = await usuarioModel.findOne({ email });
 
     if (existe) {
-      return {
-        statusCode: 400,
-        json: { message: "El correo electrónico ya está registrado" },
-      };
+      if (!(userId && existe._id.toString() === userId.toString())) {
+        return {
+          statusCode: 400,
+          json: { message: "El correo electrónico ya está registrado" },
+        };
+      }
     }
 
     const codigo = Math.floor(10000 + Math.random() * 90000).toString();
@@ -94,13 +116,13 @@ export const enviarCodigoRegistroService = async (email, nombreUsuario) => {
     });
 
     const mailOptions = {
-      from: `"Qué Rico Pollo" <stremusoporte@gmail.com>`,
+      from: `"EcoGym" <stremusoporte@gmail.com>`,
       to: email,
-      subject: `🍗 Código de Verificación - Qué Rico Pollo`,
+      subject: `⚡ Código de Verificación - EcoGym`,
       html: generarTemplateCorreo(
-        "Verifica tu cuenta",
+        "VERIFICACIÓN DE CUENTA",
         nombreUsuario,
-        "¡Gracias por elegirnos! Para completar tu registro y empezar a disfrutar de nuestros productos, ingresa el siguiente código de seguridad en la aplicación:",
+        "Estás a un paso de comenzar tu entrenamiento. Ingresa el siguiente código de seguridad en la aplicación para activar tu cuenta:",
         codigo,
       ),
     };
@@ -193,15 +215,15 @@ export const solicitarRecuperacionPasswordService = async (email) => {
     });
 
     const mailOptions = {
-      from: `"Qué Rico Pollo" <stremusoporte@gmail.com>`,
+      from: `"EcoGym" <stremusoporte@gmail.com>`,
       to: email,
-      subject: `🔑 Recuperación de Contraseña - Qué Rico Pollo`,
+      subject: `🔑 Recuperación de Contraseña - EcoGym`,
       html: generarTemplateCorreo(
-        "Recuperar Contraseña",
+        "RECUPERAR CONTRASEÑA",
         usuario.nombreCompleto,
-        "Hemos recibido una solicitud para cambiar la contraseña de tu cuenta. Ingresa este código de 5 dígitos para proceder con el cambio:",
+        "Hemos recibido una solicitud para restablecer el acceso a tu cuenta. Ingresa este código de seguridad para crear una nueva contraseña:",
         codigo,
-        "Importante: No compartas este código con nadie.",
+        "IMPORTANTE: No compartas este código con nadie por motivos de seguridad.",
       ),
     };
 
@@ -521,19 +543,14 @@ export const googleAuthService = async (datos) => {
 
 export const actualizarPerfilService = async (id, datos) => {
   try {
-    const { nombreCompleto, telefono } = datos;
-
     const usuarioActualizado = await usuarioModel.findByIdAndUpdate(
       id,
-      { $set: { nombreCompleto, telefono } },
-      { new: true },
+      { $set: datos },
+      { new: true, runValidators: true },
     );
 
     if (!usuarioActualizado) {
-      return {
-        statusCode: 404,
-        json: { message: "Usuario no encontrado." },
-      };
+      return { statusCode: 404, json: { message: "Usuario no encontrado." } };
     }
 
     const token = jwt.sign(
